@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Windows 11 高速化セッティング</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1b1f27;--mu:#5d6675;--bd:#d9dde4;--ac:#0b6bcb;--ok:#1a7f4b;--wn:#b36b00;--rk:#c0392b;--code:#101624;--codetx:#d7e3ff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151b;--card:#1b2029;--tx:#e8ebf1;--mu:#9aa4b5;--bd:#303846;--ac:#5aa6ff;--ok:#4cc38a;--wn:#e6a23c;--rk:#ff6b5e}}
+:root[data-theme="dark"]{--bg:#12151b;--card:#1b2029;--tx:#e8ebf1;--mu:#9aa4b5;--bd:#303846;--ac:#5aa6ff;--ok:#4cc38a;--wn:#e6a23c;--rk:#ff6b5e}
+html{color-scheme:light dark;scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 "Segoe UI","Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--mu);margin:0 0 16px}
+.note{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--wn);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.9rem}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:7px 14px;border-radius:8px;cursor:pointer}
+button.p{background:var(--ac);border-color:var(--ac);color:#fff}
+button.on{outline:2px solid var(--ac)}
+.item{display:flex;gap:12px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.item input{margin-top:5px;width:18px;height:18px;flex:none}
+.t{font-weight:600}
+.d{color:var(--mu);font-size:.88rem}
+.tag{display:inline-block;font-size:.72rem;border:1px solid currentColor;border-radius:99px;padding:0 8px;margin-left:6px;vertical-align:1px}
+.low{color:var(--ok)}.mid{color:var(--wn)}.adm{color:var(--rk)}
+h2{font-size:1.05rem;margin:22px 0 8px}
+pre{background:var(--code);color:var(--codetx);border-radius:10px;padding:14px;overflow-x:auto;font:13px/1.55 Consolas,"Courier New",monospace;white-space:pre;margin:0;max-height:360px}
+ol{color:var(--mu);font-size:.9rem;padding-left:1.3em}
+.wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Windows 11 高速化セッティング</h1>
+<p class="sub">ONにしたい項目を選ぶと、実行用のPowerShellスクリプトが自動生成されます。</p>
+<div class="note">ブラウザからWindowsの設定を直接変更することはできないため、スクリプトを生成してお使いのPCで実行する方式です。実行前に内容を確認し、復元ポイントの作成をおすすめします。</div>
+
+<div class="bar">
+<button id="mApply" class="on">適用する</button>
+<button id="mUndo">元に戻す</button>
+<span style="flex:1"></span>
+<button id="pSafe">おすすめを選択</button>
+<button id="pAll">すべて選択</button>
+<button id="pNone">解除</button>
+</div>
+
+<div id="list"></div>
+
+<h2>生成されたスクリプト <span id="cnt" class="d"></span></h2>
+<div class="wrap"><pre id="out"></pre></div>
+<div class="bar" style="margin-top:10px">
+<button class="p" id="copy">コピー</button>
+<span id="msg" class="d"></span>
+</div>
+
+<h2>使い方</h2>
+<ol>
+<li>「コピー」を押し、メモ帳に貼り付けて <code>speedup.ps1</code> として保存します（文字コードはUTF-8）。</li>
+<li>管理者項目を含む場合は、スタートを右クリック →「ターミナル (管理者)」を開きます。</li>
+<li><code>Set-ExecutionPolicy -Scope Process Bypass</code> を実行してから <code>.\speedup.ps1</code> を実行します。</li>
+<li>完了後、PCを再起動すると設定が確実に反映されます。</li>
+</ol>
+</main>
+<script>
+const T=[
+{id:"rp",t:"復元ポイントを作成",d:"変更前に作成。何かあればシステムの復元で戻せます。",r:"low",a:1,rec:1,on:'Enable-ComputerRestore -Drive "$env:SystemDrive\\"\nCheckpoint-Computer -Description "Before speedup" -RestorePointType MODIFY_SETTINGS',off:'# 復元ポイントは「システムの復元」から手動で戻してください'},
+{id:"pw",t:"電源プランを「高パフォーマンス」に",d:"CPUの省電力制御が弱まり反応が速くなります。ノートPCはバッテリー消費が増えます。",r:"mid",a:0,rec:1,on:'powercfg /setactive SCHEME_MIN',off:'powercfg /setactive SCHEME_BALANCED'},
+{id:"tr",t:"透明効果をオフ",d:"スタートメニューやタスクバーの透過を止め、描画負荷を下げます。",r:"low",a:0,rec:1,on:'Set-ItemProperty "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" EnableTransparency 0',off:'Set-ItemProperty "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize" EnableTransparency 1'},
+{id:"an",t:"ウィンドウのアニメーションをオフ",d:"最小化・最大化の動きを省いてキビキビ感を出します。",r:"low",a:0,rec:1,on:'Set-ItemProperty "HKCU:\\Control Panel\\Desktop\\WindowMetrics" MinAnimate "0"',off:'Set-ItemProperty "HKCU:\\Control Panel\\Desktop\\WindowMetrics" MinAnimate "1"'},
+{id:"bg",t:"バックグラウンドアプリを無効化",d:"使っていないストアアプリが裏で動くのを防ぎ、メモリとCPUを節約します。",r:"low",a:0,rec:1,on:'Set-ItemProperty "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications" GlobalUserDisabled 1',off:'Set-ItemProperty "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications" GlobalUserDisabled 0'},
+{id:"gd",t:"Xbox Game DVR（録画機能）をオフ",d:"ゲーム録画の常駐処理を止めます。ゲーム以外でも負荷軽減になります。",r:"low",a:0,rec:1,on:'Set-ItemProperty "HKCU:\\System\\GameConfigStore" GameDVR_Enabled 0',off:'Set-ItemProperty "HKCU:\\System\\GameConfigStore" GameDVR_Enabled 1'},
+{id:"ti",t:"ヒント・おすすめ表示をオフ",d:"スタートや設定に出る提案・広告的な表示を減らします。",r:"low",a:0,rec:1,on:'$p="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager"\nforeach($n in "SubscribedContent-338388Enabled","SubscribedContent-338389Enabled","SubscribedContent-310093Enabled","SoftLandingEnabled"){Set-ItemProperty $p $n 0}',off:'$p="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager"\nforeach($n in "SubscribedContent-338388Enabled","SubscribedContent-338389Enabled","SubscribedContent-310093Enabled","SoftLandingEnabled"){Set-ItemProperty $p $n 1}'},
+{id:"tmp",t:"一時ファイルを削除",d:"ユーザーの一時フォルダを掃除してディスク容量を確保します。使用中のファイルは自動でスキップされます。",r:"low",a:0,rec:1,on:'Remove-Item "$env:TEMP\\*" -Recurse -Force -ErrorAction SilentlyContinue',off:'# 削除したファイルは元に戻せません'},
+{id:"hib",t:"休止状態を無効化（高速スタートアップも無効）",d:"hiberfil.sys（数GB）を削除して容量を空けます。高速スタートアップが使えなくなるため、起動が遅くなる場合があります。",r:"mid",a:1,rec:0,on:'powercfg /hibernate off',off:'powercfg /hibernate on'},
+{id:"sm",t:"SysMain（旧Superfetch）を停止",d:"HDD搭載PCでディスク使用率が100%に張り付く場合に有効。SSDでは基本的に不要です。",r:"mid",a:1,rec:0,on:'Stop-Service SysMain -Force\nSet-Service SysMain -StartupType Disabled',off:'Set-Service SysMain -StartupType Automatic\nStart-Service SysMain'}
+];
+let mode="on";
+const $=id=>document.getElementById(id);
+const list=$("list");
+T.forEach(x=>{
+  const l=document.createElement("label");l.className="item";
+  const rl={low:"低リスク",mid:"要注意"}[x.r];
+  l.innerHTML='<input type="checkbox" data-id="'+x.id+'"><div><div class="t">'+x.t+
+   '<span class="tag '+x.r+'">'+rl+'</span>'+(x.a?'<span class="tag adm">管理者</span>':'')+
+   '</div><div class="d">'+x.d+'</div></div>';
+  list.appendChild(l);
+});
+const boxes=[...list.querySelectorAll("input")];
+function gen(){
+  const sel=T.filter(x=>boxes.find(b=>b.dataset.id===x.id).checked);
+  let s="# Windows 11 高速化スクリプト（"+(mode==="on"?"適用":"元に戻す")+"）\n";
+  if(sel.some(x=>x.a)) s+="# ※ 管理者として実行してください\n";
+  s+="$ErrorActionPreference = 'Continue'\n";
+  sel.forEach(x=>{s+="\n# --- "+x.t+"\n"+x[mode]+"\n"});
+  if(!sel.length) s+="\n# 項目を選択してください\n";
+  else s+="\nWrite-Host '完了しました。PCを再起動してください。'\n";
+  $("out").textContent=s;$("cnt").textContent="（"+sel.length+"項目）";
+  return s;
+}
+boxes.forEach(b=>b.addEventListener("change",gen));
+function setSel(f){boxes.forEach(b=>{b.checked=f(T.find(x=>x.id===b.dataset.id))});gen()}
+$("pSafe").onclick=()=>setSel(x=>x.rec);
+$("pAll").onclick=()=>setSel(()=>true);
+$("pNone").onclick=()=>setSel(()=>false);
+function setMode(m){mode=m;$("mApply").classList.toggle("on",m==="on");$("mUndo").classList.toggle("on",m==="off");gen()}
+$("mApply").onclick=()=>setMode("on");
+$("mUndo").onclick=()=>setMode("off");
+$("copy").onclick=async()=>{
+  const s=gen();
+  try{await navigator.clipboard.writeText(s);$("msg").textContent="コピーしました"}
+  catch(e){
+    const r=document.createRange();r.selectNodeContents($("out"));
+    const g=getSelection();g.removeAllRanges();g.addRange(r);
+    try{document.execCommand("copy");$("msg").textContent="コピーしました"}
+    catch(e2){$("msg").textContent="選択済みです。Ctrl+C でコピーしてください"}
+  }
+};
+setSel(x=>x.rec);
+</script>
+</body>
+</html>
